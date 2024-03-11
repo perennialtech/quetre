@@ -2,9 +2,7 @@ version: '3'
 
 services:
   quetre:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/perennialtech/quetre:main
     restart: unless-stopped
     ports:
       - "3000:3000"
