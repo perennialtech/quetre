@@ -1,25 +1,30 @@
-FROM node:alpine3.17
+# ------ Builder stage ------
+FROM node:lts-alpine AS builder
+
+ENV NODE_ENV=production
 WORKDIR /app
 
-# Update and install necessary packages
-RUN apk update && apk add git
-
-# Clone the repository
-RUN git clone https://github.com/zyachel/quetre .
-
-# Install pnpm
-RUN npm i -g pnpm
+RUN apk add --no-cache git
+RUN corepack enable
+RUN git clone --depth 1 https://github.com/zyachel/quetre.git . && rm -rf .git .github ./*.md .gitignore .eslintrc.json quetre.service .env.example
 RUN pnpm install
+RUN pnpm run sass:build
 
-# Create a new user and group 'quetre' with UID and GID of 10001
-RUN addgroup -g 10001 quetre && adduser -u 10001 -G quetre -S quetre
+# ------ Final image ------
+FROM node:lts-alpine
 
-# Change the ownership of the /app directory to the new user
-RUN chown -R quetre:quetre /app
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=builder /app /app
+
+# Create a non-root user `quetre` and set ownership
+RUN addgroup -g 1001 -S quetre && \
+    adduser -u 1001 -S quetre -G quetre && \
+    chown -R quetre:quetre /app
 
 # Switch to non-root user
 USER quetre
 
 EXPOSE 3000
 
-CMD ["pnpm", "start"]
+CMD ["node", "server.js"]
